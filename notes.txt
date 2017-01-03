@@ -9,6 +9,45 @@ So, to create this as a local repository (on office Linux box) first:
 
 Now create the repo on GitHub using 'New repository'
 
-Now push this to my GitHub account:
+Now to monitor files locally:
 
-git add
+git add .
+
+then commit:
+
+git commit -m "Initial Commit"
+
+then add existing repo:
+
+git remote add github https://github.com/adfriend45/H9_BUILD
+
+then push changes to github:
+
+git push github master
+
+Did not work as need to pull first:
+
+git pull https://github.com/adfriend45/H9_BUILD master
+
+Seemed to work! Now try pushing:
+
+git push github master
+
+Worked!
+
+Now update code on a test branch and try pushing.
+
+git branch test
+git checkout test
+git commit H9_BUILD.f90
+git push -u origin test
+
+Did not work.
+vi .git/config
+Change url=https to url=ssh
+
+Next need to set up key on GitHub using https://help.github.com/articles/generating-an-ssh-key/
+then:
+git remote add origin https://github.com/adfriend45/H9_BUILD
+
+Worked! Different from on Darwin as asks for username on GitHub as well as password. Still, works!
