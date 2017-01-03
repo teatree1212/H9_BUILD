@@ -1,0 +1,14 @@
+Tuesday 2nd January, 2017
+-------------------------
+Build approaches here to use in HYBRID9. Focus on soil hydrology for a single site first.
+Also, put on GitHub.
+
+So, to create this as a local repository (on office Linux box) first:
+
+~\MODELS\H9_BUILD\git init
+
+Now create the repo on GitHub using 'New repository'
+
+Now push this to my GitHub account:
+
+git add
