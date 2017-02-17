@@ -587,7 +587,7 @@ write (*,*) dpdth(:)
 
   ! Solve the tridiagonal system of equations.
   IF (B_t (1) == 0.0) PAUSE
-  BET = B (1)
+  BET = B_t (1)
   dtheta (1) = R (1) / BET
   DO I = 2, Nlevsoi+1
     GAM (I) = C_t (I-1) / BET
