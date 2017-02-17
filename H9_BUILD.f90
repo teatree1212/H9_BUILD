@@ -148,13 +148,13 @@ REAL :: dtheta (1:Nlevsoi)
 !---------------------------------------------------------------------!
 
 !---------------------------------------------------------------------!
-! Vector of O13 Eqn. 7.121-123 values.
+! Soil Matric Potential derivatives. (?Vector of O13 Eqn. 7.121-123 values.
 !---------------------------------------------------------------------!
 REAL :: dpdth (1:Nlevsoi+1)
 !---------------------------------------------------------------------!
 
 !---------------------------------------------------------------------!
-! Vector of O13 Eqn. 7.124 values.
+! Hydraulic conductivity derivatives. (?Vector of O13 Eqn. 7.124 values.
 !---------------------------------------------------------------------!
 REAL :: dkdth (1:Nlevsoi)
 !---------------------------------------------------------------------!
@@ -379,13 +379,13 @@ DO iTIME = 1, 510*3
       !---------------------------------------------------------------!
       tempi = 1.0
       temp0 = (((-psi_sat (I) + zwt - zi (I-1)) / (-psi_sat (I)))) &
-              ** (1.0 - 1.0 / B (I))
+              ** (1.0 - 1.0 / B (I)) ! Eqn. 7.127
       voleq1 = psi_sat (I) * theta_sat (I) / &
                (1.0 - 1.0 / B (I)) / &
                (zwt - zi (I-1)) * (tempi - temp0)
       theta_e (I) = (voleq1 * (zwt - zi (I-1)) + &
                     theta_sat (I) * (zi (I) - zwt))/ &
-                    (zi (I) - zi (I-1))
+                    (zi (I) - zi (I-1)) !Eqn. 7.127
       theta_e (I) = MIN (theta_sat (I), theta_e (I))
       theta_e (I) = MAX (theta_e (I), 0.0)
       !---------------------------------------------------------------!
@@ -397,7 +397,7 @@ DO iTIME = 1, 510*3
       tempi = (((-psi_sat (I) + zwt - zi (I)) / (-psi_sat (I)))) ** &
               (1.0 - 1.0 / B (I))
       temp0 = (((-psi_sat (I) + zwt - zi (I - 1)) / (-psi_sat (I)))) ** &
-              (1.0 - 1.0 / B (I))
+              (1.0 - 1.0 / B (I)) ! Eqn. 7.127
       theta_e (I) = psi_sat (I) * theta_sat (I) / (1.0 - 1.0 / B (I)) &
                     / (zi (I) - zi (I-1)) * (tempi - temp0)
       theta_e (I) = MAX (theta_e (I),0.0)
@@ -405,7 +405,7 @@ DO iTIME = 1, 510*3
       !---------------------------------------------------------------!
     END IF
     !-----------------------------------------------------------------!
-    ! Equilibrium matric potential, from CESM, based on 
+    ! Equilibrium matric potential, from CESM, based on
     ! O13 Eqn. 7.134 (mm).
     !-----------------------------------------------------------------!
     psi_e (I) = psi_sat (I) * (MAX (theta_e (I) / theta_sat (I), &
@@ -420,7 +420,7 @@ DO iTIME = 1, 510*3
   ! If water table is below soil column calculate psi_e for the 11th layer
   !-------------------------------------------------------------------!
   I = Nlevsoi
-  IF (iwt == Nlevsoi) then 
+  IF (iwt == Nlevsoi) then
     tempi = 1.0
     temp0 = (((-psi_sat (I) + zwt - &
             zi (I)) / (-psi_sat(I)))) ** (1.0 - 1.0 / B (I))
@@ -445,19 +445,23 @@ write (*,*) psi_e(:)
     ! Hydraulic conductivity based on liquid water content only.
     ! From CESM, based on O13 Eqn. 7.89.
     !-----------------------------------------------------------------!
+    ! Eqn for s1 is a term which is part of Eqn. 7.125
     s1 = 0.5 * (theta (I)     + theta     (MIN(Nlevsoi,I+1))) / &
         (0.5 * (theta_sat (I) + theta_sat (MIN(Nlevsoi,I+1))))
     s1 = MIN (1.0, s1)
+    ! Eqn for s2 is a term which is part of Eqn. 7.125
     s2 = k_sat (I) * s1 ** (2.0 * B (I) + 2.0)
     !-----------------------------------------------------------------!
     ! Hydraulic conductivity (mm s^-1). Need to add ice impedence.
     !-----------------------------------------------------------------!
     k (I) = s1 * s2
     !-----------------------------------------------------------------!
-    ! O13 Eqn. 7.125.
+    ! Change in hydraulic conductivity O13 Eqn. 7.125.
     !-----------------------------------------------------------------!
     dkdth (I) = (2.0 * B (I) + 3.0) * s2 * &
                 (1.0 / (theta_sat (I) + theta_sat (MIN (Nlevsoi,I+1))))
+write (*,*) 'dkdth- change in hydraulic conductivity'
+write (*,*)  dkdth (:)
     !-----------------------------------------------------------------!
     ! Matric potentials and dervative.
     !-----------------------------------------------------------------!
@@ -465,12 +469,11 @@ write (*,*) psi_e(:)
     wv = MIN (1.0, wv)
     psi (I) = psi_sat (I) * wv ** (-B (I))
     psi (I) = MAX (psi_min, psi (I))
-    ! Eqn. 7.122.
-write (*,*) 'wv',wv,theta(I),psi(I)
-    dpdth (I) = -B (I) * psi (I) / (wv * theta_sat (I))
+write (*,*) 'wv',wv,'theta',theta(I),'psi',psi(I)
+    dpdth (I) = -B (I) * psi (I) / (wv * theta_sat (I)) !Eqn. 7.122
   END DO
   !-------------------------------------------------------------------!
-write (*,*) 'dpdth'
+write (*,*) 'dpdth- change in soil matric potential'
 write (*,*) dpdth(:)
 
   !-------------------------------------------------------------------!
@@ -495,10 +498,10 @@ write (*,*) dpdth(:)
   qout (I) = -k (I) * num / den
   dqodth1 (I) = -(-k (I) * dpdth (I)   + num * dkdth (I)) / den
   dqodth2 (I) = -( k (I) * dpdth (I+1) + num * dkdth (I)) / den
-  R   (I) =  qin (I) - qout (I)
-  A_t (I) =  0.0
-  B_t (I) =  dz (I) / dt + dqodth1 (I)
-  C_t (I) =  dqodth2 (I)
+  R   (I) =  qin (I) - qout (I)  ! Eqn. 7.139
+  A_t (I) =  0.0 !  Eqn 7.136
+  B_t (I) =  dz (I) / dt + dqodth1 (I)  ! Eqn 7.137
+  C_t (I) =  dqodth2 (I) !  Eqn 7.138
   !-------------------------------------------------------------------!
   DO I = 2, Nlevsoi - 1
     den     = (z (I) - z (I-1))
@@ -521,7 +524,7 @@ write (*,*) dpdth(:)
   !-------------------------------------------------------------------!
   I = Nlevsoi
   !-------------------------------------------------------------------!
-  IF (I > iwt) THEN ! Water table is in soil column
+  IF (I > iwt) THEN ! Water table is in soil column (Section 7.4.2.4)
     den    = (z (I) - z (I-1))
     dpsie  = (psi_e (I) - psi_e (I-1))
     num    = (psi (I) - psi (I-1)) - dpsie
