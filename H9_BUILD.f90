@@ -27,8 +27,9 @@ INTEGER :: iwt
 !---------------------------------------------------------------------!
 ! Integration timestep (s).
 !---------------------------------------------------------------------!
-REAL :: dt = 86400.0 / 48.0
+!REAL :: dt = 86400.0 / 48.0
 !REAL :: dt = 86400.0 / 96.0
+REAL :: dt = 86400.0 / 192.0
 !---------------------------------------------------------------------!
 
 !---------------------------------------------------------------------!
@@ -62,7 +63,7 @@ REAL :: wh_zwt
 REAL :: ka,wh,qcharge
 
 !---------------------------------------------------------------------!
-! Restriction for min of soil potential (mm). Value taken from O13
+! Restriction for min of soil matric potential (mm). Value taken from O13
 ! Eqn. 7.134.
 !---------------------------------------------------------------------!
 REAL, PARAMETER :: psi_min = -1.0E08
@@ -237,6 +238,8 @@ WRITE (*,*) 'Starting...'
 ! File for diagnostics.
 !---------------------------------------------------------------------!
 OPEN (10, FILE = 'water.out', STATUS = 'UNKNOWN')
+OPEN (11, FILE = 'qin.out', STATUS = 'UNKNOWN')
+OPEN (12, FILE = 'qout.out', STATUS = 'UNKNOWN')
 !---------------------------------------------------------------------!
 
 !---------------------------------------------------------------------!
@@ -272,6 +275,7 @@ END DO
 !---------------------------------------------------------------------!
 DO I = 1, Nlevgrnd
   z (I) = 1.0E3 * fs * (EXP (0.5 * (I - 0.5)) - 1.0)
+  WRITE(*,*) 'z', z (I)
 END DO
 !---------------------------------------------------------------------!
 ! Soil layer thicknesses from Eqn. 6.6.
@@ -288,11 +292,11 @@ DO I = 1, Nlevgrnd-1
 END DO
 zi (Nlevgrnd) = z (Nlevgrnd) + 0.5 * dz (Nlevgrnd)
 !---------------------------------------------------------------------!
-write (*,*) z(1:Nlevgrnd)
+write (*,*) 'z', z(1:Nlevgrnd)
 write (*,*)
-write (*,*) dz (1:Nlevgrnd)
+write (*,*) 'dz', dz (1:Nlevgrnd)
 write (*,*)
-write (*,*) zi (1:Nlevgrnd)
+write (*,*) 'zi' ,zi (1:Nlevgrnd)
 !---------------------------------------------------------------------!
 
 !---------------------------------------------------------------------!
@@ -586,13 +590,30 @@ write (*,*) dpdth(:)
   !-------------------------------------------------------------------!
 
   ! Solve the tridiagonal system of equations.
-  IF (B_t (1) == 0.0) PAUSE
+  IF (B_t (1) == 0.0) THEN
+    WRITE(*,*) 'press enter'
+    READ(*,*)
+  ENDIF
   BET = B_t (1)
+  IF (BET<0) THEN
+    WRITE(*,*) 'denominator negative'
+  ENDIF
   dtheta (1) = R (1) / BET
   DO I = 2, Nlevsoi+1
     GAM (I) = C_t (I-1) / BET
+    IF (GAM(I) <0) THEN
+      WRITE(*,*) 'GAM is negative'
+      WRITE(*,*) GAM(I), '=' ,C_t (I-1) , '/' , BET
+    ENDIF
     BET = B_t (I) - A_t (I) * GAM (I)
-    IF (BET == 0.0) PAUSE
+    IF (BET == 0.0) THEN
+       WRITE(*,*) 'press enter'
+       READ(*,*)
+    ENDIF
+    IF (BET<0) THEN
+      WRITE(*,*) 'denominator negative'
+      WRITE(*,*)   BET ,'=', B_t (I) ,'-', A_t (I),'*', GAM (I)
+    ENDIF
     dtheta (I) = (R (I) - A_t (I) * dtheta (I-1)) / BET
   END DO
 
@@ -610,6 +631,11 @@ write (*,*) dtheta
   !-------------------------------------------------------------------!
   DO I = 1, Nlevsoi
     theta (I) = theta (I) + dtheta (I) * dz (I)
+    IF (theta(I) <0) THEN
+      WRITE(*,*) 'theta negative'
+      WRITE(*,*) theta (I), '=', theta (I-1) ,'+', dtheta (I) ,'*', dz (I)
+
+    ENDIF
   END DO ! I = 1, Nlevsoi
   !-------------------------------------------------------------------!
 
@@ -648,6 +674,8 @@ write (*,*) theta (:)
 !stop
   ! Write diagnostics to 'water.out'.
   WRITE (10,'(I5,12F8.3)') iTIME,theta(:)
+  WRITE(11,'(I5,12F8.5)') iTIME, qin(:)
+  WRITE(12,'(I5,12F8.5)') iTIME, qout(:)
 
 END DO ! Time loop.
 
